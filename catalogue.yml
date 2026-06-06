@@ -18,6 +18,11 @@
         shell: /sbin/nologin
         comment: "roboshop system user"
 
+    - name: delete app directory
+      ansible.builtin.files:
+        path: /app
+        state: absent
+
     - name: Create app directory if it does not exist
       ansible.builtin.file:
         path: /app
@@ -26,6 +31,11 @@
       ansible.builtin.get_url:
         url: https://roboshop-artifacts.s3.amazonaws.com/catalogue-v3.zip
         dest: /tmp/catalogue.zip
+
+    - name: delete catalogue zip file
+      ansible.builtin.files:
+        path: /tmp/catalogue.zip
+        state: absent
 
     - name: unzip the catalogue downaloded file
       ansible.builtin.unarchive:
