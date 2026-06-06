@@ -7,7 +7,7 @@
 
     - name: install nodejs
       ansible.builtin.dnf:
-        name: catalogue
+        name: nodejs
         state: present
 
     - name: create useradd
