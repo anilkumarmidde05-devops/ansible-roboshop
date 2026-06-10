@@ -64,7 +64,7 @@
         name: mongodb-mongosh
         state: present
     - name: check products loaded
-      ansible.builtin.command: mongosh --host "{{MONGODB_HOST}}" --quiet  --eval 'db.getMongo().getDBNames().indexOf("catalogue")'
+      ansible.builtin.command: mongosh --host "{{MONGODB_HOST}}" --quiet  --eval 'db.getMongo().getDBNames().indexOf("catalogue")' # it will give positive number if the index is available
       register: catalogue_output
 
     - name: print output
@@ -73,7 +73,7 @@
 
     - name: load the products
       ansible.builtin.shell: mongosh --host "{{MONGODB_HOST}}" </app/db/master-data.js
-      when: catalogue_output.stdout | int < 0
+      when: catalogue_output.stdout | int < 0 # if it is less than zero then we are loading the products
 
     - name: start catalogue
       ansible.builtin.service:
