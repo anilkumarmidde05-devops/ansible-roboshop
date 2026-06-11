@@ -1,0 +1,99 @@
+- name: configure shipping server
+  hosts: shipping
+  become: yes
+  tasks:
+    - name: install maven
+      ansible.builtin.dnf:
+        name: maven
+        state: present
+
+    - name: creating system user roboshop
+      ansible.builtin.user:
+        name: roboshop
+        system: true
+        home: /app
+        shell: /sbin/nologin
+        comment: "roboshop system user"
+
+    - name: delete the app directory
+      ansible.builtin.file:
+        path: /app
+        state: absent
+
+    - name: create the app directory
+      ansible.builtin.file:
+        path: /app
+        state: directory
+
+    - name: delete the unzip file
+      ansible.builtin.file:
+        path: /tmp/shipping.zip
+        state: absent
+
+    - name: download the shipping files
+      ansible.builtin.get_url:
+        url: https://roboshop-artifacts.s3.amazonaws.com/shipping-v3.zip
+        src: /tmp/shipping.zip
+
+    - name: unarchive shipping
+      ansible.builtin.unarchive:
+        src: /tmp/shipping.zip
+        dest: /app
+        remote_src: yes
+
+    - name: install dependencies
+      ansible.builtin.command: mvn clean package
+      args:
+        chdir: /app # to run the packge in this folder will use this args command
+
+    - name: install dependencies
+      ansible.builtin.command: mv target/shipping-1.0.jar shipping.jar
+      args:
+        chdir: /app # to run the packge in this folder will use this args command
+
+    - name: create systemctl service
+      ansible.builtin.template:
+        src: shipping.service
+        dest: /etc/systemd/system/shipping.service
+
+    - name: daemon reload
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+
+    - name: start and enable the shipping
+      anisble.builtin.service:
+        name: shipping
+        state: restarted
+        enabled: yes
+
+    - name: install the MYSQL server
+      ansbile.builtin.dnf:
+        name: mysql
+        state: present
+
+    # - name: load schema
+    #   ansible.builtin.command: mysql -h "{{MYSQL_HOST}}" -uroot -pRoboShop@1 < /app/db/schema.sql
+
+    # - name: create app user
+    #   ansible.builtin.command: mysql -h "{{MYSQL_HOST}}" -uroot -pRoboShop@1 < /app/db/app-user.sql
+
+    # - name: Load master data
+    #   ansible.builtin.command: mysql -h "{{MYSQL_HOST}}" -uroot -pRoboShop@1 < /app/db/master-data.sql
+    - name: import shipping details
+      community.mysql.mysql_db: # by using this we can load the databases with the help of loop all at once
+        state: import
+        name: all
+        target: "{{item}}"
+        login_host: "{{MYSQL_HOST}}"
+        login_user: root
+        login_password: RoboShop@1
+      loop:
+        - /app/db/schema.sql
+        - /app/db/app-user.sql
+        - /app/db/master-data.sql
+
+    - name: restart the shipping
+      ansible.builtin.service:
+        name: shipping
+        state: restarted
+        enabled: yes
